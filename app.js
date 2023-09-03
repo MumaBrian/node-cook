@@ -1,6 +1,6 @@
 require('dotenv').config();
 require('express-async-errors');
-
+const swaggerDocs = require('./swagger')
 const express = require('express');
 const app = express();
 const fileUpload = require('express-fileupload');
@@ -10,6 +10,8 @@ cloudinary.config({
   api_key: process.env.CLOUD_API_KEY,
   api_secret: process.env.CLOUD_API_SECRET,
 })
+const swaggerUi = require('swagger-ui-express')
+
 // database
 const connectDB = require('./db/connect');
 
@@ -28,14 +30,15 @@ app.get('/', (req, res) => {
   res.send('<h1>File Upload Starter</h1>');
 });
 
-app.use('/api/v1/products',productRouter)
+app.use('/products',productRouter)
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
 // middleware
 app.use(notFoundMiddleware);
 app.use(errorHandlerMiddleware);
 
 const port = process.env.PORT || 3000;
-
+// swaggerDocs(app,port)
 const start = async () => {
   try {
     await connectDB(process.env.MONGO_URI);
@@ -43,6 +46,7 @@ const start = async () => {
     app.listen(port, () =>
       console.log(`Server is listening on port ${port}...`)
     );
+    
   } catch (error) {
     console.log(error);
   }
