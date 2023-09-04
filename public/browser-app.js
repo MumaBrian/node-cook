@@ -1,77 +1,125 @@
-const url = '/api/v1/products'
-const fileFormDOM = document.querySelector('.file-form')
+const purchase = [
+  { id: '1', name: 't-shirt', price: 1999 },
+  { id: '2', name: 'shoes', price: 4999 },
+];
+const total_amount = 10998;
+const shipping_fee = 1099;
 
-const nameInputDOM = document.querySelector('#name')
-const priceInputDOM = document.querySelector('#price')
-const imageInputDOM = document.querySelector('#image')
+var stripe = Stripe(
+  'pk_test_51NmcCSLFJ8iDr0frFQH6whWhs18cNjToM6yQ4MtDl7Xr85Www97j7sUCujmuX4r5qdzL9nTOv2nZ2OTq8GzNMyHG00z6tQmzrw'
+);
 
-const containerDOM = document.querySelector('.container')
-let imageValue;
+// The items the customer wants to buy
 
-// imageInputDOM.addEventListener('change',(e)=>{
-//  const file = e.target.files[0];
-//  console.log(file);
-// })
-
-
-
-
-
-
-
-imageInputDOM.addEventListener('change',async (e)=>{
- const imageFile = e.target.files[0];
- const formData = new FormData();
- formData.append('image',imageFile)
- try {
-  const {data:{image:{src}}} = await axios.post(`${url}/uploads`,formData,{
-   headers:{
-    'Content-Type':'multipart/form-data'
-   }
+// Disable the button until we have Stripe set up on the page
+document.querySelector('button').disabled = true;
+fetch('/stripe', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({ purchase, total_amount, shipping_fee }),
+})
+  .then(function (result) {
+    return result.json();
   })
-  imageValue = src
- } catch (error) {
-   imageValue = null
-  console.log(error);
- }
-})
+  .then(function (data) {
+    var elements = stripe.elements();
 
+    var style = {
+      base: {
+        color: '#32325d',
+        fontFamily: 'Arial, sans-serif',
+        fontSmoothing: 'antialiased',
+        fontSize: '16px',
+        '::placeholder': {
+          color: '#32325d',
+        },
+      },
+      invalid: {
+        fontFamily: 'Arial, sans-serif',
+        color: '#fa755a',
+        iconColor: '#fa755a',
+      },
+    };
 
-fileFormDOM.addEventListener('submit',async (e)=>{
-e.preventDefault()
-const nameValue = nameInputDOM.value;
-const priceValue = priceInputDOM.value;
-try {
- 
- const product = {name:nameValue,price:priceValue,image:imageValue}
- 
-  await axios.post(url,product);
-  fetchProducts()
-} catch (error) {
- console.log(error);
-}
-})
+    var card = elements.create('card', { style: style });
+    // Stripe injects an iframe into the DOM
+    card.mount('#card-element');
 
+    card.on('change', function (event) {
+      // Disable the Pay button if there are no card details in the Element
+      document.querySelector('button').disabled = event.empty;
+      document.querySelector('#card-error').textContent = event.error
+        ? event.error.message
+        : '';
+    });
 
+    var form = document.getElementById('payment-form');
+    form.addEventListener('submit', function (event) {
+      event.preventDefault();
+      // Complete payment when the submit button is clicked
+      payWithCard(stripe, card, data.clientSecret);
+    });
+  });
 
-async function fetchProducts () {
- try {
-  const {data:{products}} = await axios.get(url);
-  
-  const productsDOM = products.map((product)=>{
-return `<article class="product">
-<img src="${product.image}" alt="${product.name}" class="img"/>
-<footer>
-<p>${product.name}</p>
-<span>$${product.price}</span>
-</footer>
-</article>`
-  }).join('')
-  containerDOM.innerHTML = productsDOM
- } catch (error) {
-  console.log(error);
- }
- 
-}
+// Calls stripe.confirmCardPayment
+// If the card requires authentication Stripe shows a pop-up modal to
+// prompt the user to enter authentication details without leaving your page.
+var payWithCard = function (stripe, card, clientSecret) {
+  loading(true);
+  stripe
+    .confirmCardPayment(clientSecret, {
+      payment_method: {
+        card: card,
+      },
+    })
+    .then(function (result) {
+      if (result.error) {
+        // Show error to your customer
+        showError(result.error.message);
+      } else {
+        // The payment succeeded!
+        orderComplete(result.paymentIntent.id);
+      }
+    });
+};
 
-fetchProducts()
+/* ------- UI helpers ------- */
+
+// Shows a success message when the payment is complete
+var orderComplete = function (paymentIntentId) {
+  loading(false);
+  document
+    .querySelector('.result-message a')
+    .setAttribute(
+      'href',
+      'https://dashboard.stripe.com/test/payments/' + paymentIntentId
+    );
+  document.querySelector('.result-message').classList.remove('hidden');
+  document.querySelector('button').disabled = true;
+};
+
+// Show the customer the error from Stripe if their card fails to charge
+var showError = function (errorMsgText) {
+  loading(false);
+  var errorMsg = document.querySelector('#card-error');
+  errorMsg.textContent = errorMsgText;
+  setTimeout(function () {
+    errorMsg.textContent = '';
+  }, 4000);
+};
+
+// Show a spinner on payment submission
+var loading = function (isLoading) {
+  if (isLoading) {
+    // Disable the button and show a spinner
+    document.querySelector('button').disabled = true;
+    document.querySelector('#spinner').classList.remove('hidden');
+    document.querySelector('#button-text').classList.add('hidden');
+  } else {
+    document.querySelector('button').disabled = false;
+    document.querySelector('#spinner').classList.add('hidden');
+    document.querySelector('#button-text').classList.remove('hidden');
+  }
+};
