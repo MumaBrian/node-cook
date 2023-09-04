@@ -11,6 +11,8 @@ cloudinary.config({
   api_secret: process.env.CLOUD_API_SECRET,
 })
 const swaggerUi = require('swagger-ui-express')
+const sendEmail=require('../starter/controllers/sendEmail')
+
 
 // database
 const connectDB = require('./db/connect');
@@ -26,9 +28,15 @@ app.use(express.static('./public'));
 app.use(express.json()); 
 app.use(fileUpload({useTempFiles:true})); 
 
-app.get('/', (req, res) => {
+//routes
+app.get('/upload', (req, res) => {
   res.send('<h1>File Upload Starter</h1>');
 });
+app.get('/email', (req, res) => {
+  res.send('<h1>Email Project</h1> <a href="/send"> send email</a>')
+})
+app.use('/send', sendEmail)
+
 
 app.use('/products',productRouter)
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
