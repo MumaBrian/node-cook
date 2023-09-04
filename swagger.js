@@ -8,8 +8,8 @@ const options = {
     swaggerDefinition: {
         info: {
             title: 'File_Upload API Documentation',
-            version:'1.1.0',
-            description: 'API documentation for an Express.js app',
+            version,
+            description: 'API documentation for your Express.js app',
         },
         components: {
             securitySchemas: {
