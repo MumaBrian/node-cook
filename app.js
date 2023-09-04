@@ -13,6 +13,7 @@ cloudinary.config({
 const swaggerUi = require('swagger-ui-express')
 const sendEmail=require('../starter/controllers/sendEmail')
 
+const stripeController=require('../starter/controllers/stripeController')
 
 // database
 const connectDB = require('./db/connect');
@@ -35,8 +36,10 @@ app.get('/upload', (req, res) => {
 app.get('/email', (req, res) => {
   res.send('<h1>Email Project</h1> <a href="/send"> send email</a>')
 })
+
 app.use('/send', sendEmail)
 
+app.post('/stripe', stripeController)
 
 app.use('/products',productRouter)
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
